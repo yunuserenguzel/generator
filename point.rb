@@ -7,4 +7,8 @@ class Point
   def ==(other_point)
     x == other_point.x && y == other_point.y
   end
+
+  def to_s
+    "#{x} - #{y}"
+  end
 end

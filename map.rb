@@ -1,5 +1,7 @@
 class Map
+
   attr_accessor :cells,:rows,:cols
+
   def initialize(rows=nil,cols=nil,disabled_cells=[])
     self.cells = []
     if rows
@@ -21,21 +23,27 @@ class Map
     end
   end
 
-  def self.generate_maps(count = 1, size = 8, )
+  def self.generate_maps(count=1, size=8, disabled_count=5)
     maps = []
+    trial = 0
     while maps.count < count
-      map = generate_map(8,8,5)
-      puts 'Loading map'
+      trial += 1
+      map = generate_map(size, size, disabled_count)
+      # puts 'Loading map'
       if map.has_solution?
         maps << map
-        File.open("maps/c8r8-#{Time.now.to_i}.json",'w') do |f|
+        File.open("maps/#{map.file_name}",'w') do |f|
           f.write(maps.to_json)
         end
-        puts 'Maps file is updated'
-        map.print
+        puts 'Maps folder is updated'
       end
+      STDOUT.write "\rMaps Tried #{trial}"
     end
     return maps
+  end
+
+  def file_name
+    "c#{cols}r#{rows}-#{Time.now.to_i}.json"
   end
 
   def self.generate_map(rows=6,cols=6,max_disabled_count=5)
@@ -43,9 +51,9 @@ class Map
     map.cols = cols
     map.rows = rows
     cell_count = 0
-    cols.times do |x|
+    rows.times do |y|
       cells = []
-      rows.times do |y|
+      cols.times do |x|
         cell = Cell.new(Point.new(x,y),CellType.active)
         if max_disabled_count > 0 && rand(map.cols * map.rows - cell_count) < max_disabled_count
           can_disable = true
@@ -72,30 +80,6 @@ class Map
     puts to_s
   end
 
-  def has_solution2?(connections = 0)
-    cells.each do |row|
-      row.each do |cell|
-        empty_neighbours = cell_empty_neighbours(cell)
-        if empty_neighbours.count == (2 - cell.connection_count)
-          empty_neighbours.each do |neighbour|
-            cell.connect_to neighbour
-            tracked_cells = cell.track_cells
-            if tracked_cells
-
-            end
-          end
-        end
-      end
-    end
-    if solved?
-      return true
-    elsif cell_connections_count > connections
-      return has_solution2?(cell_connections_count)
-    else
-      return false
-    end
-  end
-
   def cell_connections_count
     total = 0
     cells.each do |row|
@@ -106,7 +90,7 @@ class Map
     return total
   end
 
-  def has_solution?(cell=nil)
+  def has_solution?(cell = nil)
     # find an active cell to start
     if cell == nil
       cells.each do |row|
@@ -117,22 +101,30 @@ class Map
       return false
     end
 
-    #   try to connect a direction
+    #   try to connect another cell from a direction
     #   if connects move to that direction and call solve map with that cell
-    #     if solve returns false disconnect connection and try another connection
+    #   if solve returns false disconnect connection and try another connection
     #   if cannot move any direction return false
-    Direction.all.shuffle.each do |direction|
+    Direction.all.each do |direction|
       other_cell = cell_next_to cell, direction
-      if cell.connect_to other_cell
-        if solved?
-          return true
-        elsif has_solution? other_cell
-          return true
+      if cell.connect_to(other_cell)
+        puts "#{direction}: #{other_cell}\n#{self}"
+        if other_cell.can_connect?
+          if has_solution? other_cell
+            return true
+          else
+            cell.disconnect_from other_cell
+          end
         else
-          cell.disconnect_from other_cell
+          if solved?
+            return true
+          else
+            cell.disconnect_from other_cell
+          end
         end
       end
     end
+    puts cell
     return false
   end
 
@@ -160,9 +152,9 @@ class Map
     end
   end
 
-  def cell_at(x,y)
-    if x >= 0 && y >= 0 && x < cells.count && y < cells[x].count
-      return cells[x][y]
+  def cell_at(row,col)
+    if row >= 0 && col >= 0 && row < cells.count && col < cells[row].count
+      return cells[row][col]
     end
   end
 
@@ -192,22 +184,52 @@ class Map
       cells: cells.to_json
     }.to_json
   end
+
   def to_s
-    result = ''
-    cells.each do |row|
-      row.each do |cell|
+    array = []
+    cells.each.with_index do |row, row_index|
+      array[row_index*3] = []
+      array[row_index*3+1] = []
+      array[row_index*3+2] = []
+      row.each.with_index do |cell, cell_index|
         if cell.cell_type == CellType.active
-          result += 'O'
+          fill_array_with(array, row_index, cell_index, '0')
+          array[row_index*3+1][cell_index*3+1] = '+' if cell.connection_count > 0
+          array[row_index*3][cell_index*3+1] = '+' if cell.north.is_a?(Cell)
+          array[row_index*3+1][cell_index*3] = '+' if cell.west.is_a? Cell
+          array[row_index*3+1][cell_index*3+2] = '+' if cell.east.is_a? Cell
+          array[row_index*3+2][cell_index*3+1] = '+' if cell.south.is_a? Cell
         elsif cell.cell_type == CellType.disabled
-          result += 'X'
+          fill_array_with(array, row_index, cell_index, '#')
         else
-          result += '-'
         end
       end
-      result += "\n"
     end
+    result = ''
+    array.each.with_index do |row, row_index|
+      result += (0..row.count).reduce("\n"){|k,v| k + '-' } if row_index %3 == 0
+      result += "\n"
+      row.each.with_index do |cell,cell_index|
+        result += "|" if cell_index % 3 == 0
+        result += "#{cell}"
+      end
+    end
+    sleep 0.2
     return result
   end
+
+  def fill_array_with(array, x, y, value)
+    array[x*3][y*3] = value
+    array[x*3][y*3+1] = value
+    array[x*3][y*3+2] = value
+    array[x*3+1][y*3] = value
+    array[x*3+1][y*3+1] = value
+    array[x*3+1][y*3+2] = value
+    array[x*3+2][y*3] = value
+    array[x*3+2][y*3+1] = value
+    array[x*3+2][y*3+2] = value
+  end
+
   # def ==(other_map)
   #   return to_s == other_map.to_s
   # end

@@ -7,20 +7,25 @@ class Cell
       self.point = point
       self.cell_type = cell_type
     end
-
+    @north = nil
+    @south = nil
+    @west = nil
+    @east = nil
   end
+
   def connect_to(other_cell)
-    if other_cell.is_a? Cell
-      if can_connect? && other_cell.can_connect?
-        if cell_at(direction_of(other_cell)) == nil &&
-          other_cell.cell_at(other_cell.direction_of(self)) == nil
-          set_cell_at direction_of(other_cell), other_cell
-          other_cell.set_cell_at other_cell.direction_of(self), self
-          return true
-        end
-      end
-    end
-    return false
+    return false if !can_connect?
+    return false if !other_cell.is_a? Cell || !other_cell.can_connect?
+    other_cell_direction = direction_of(other_cell)
+    self_direction_on_other_cell = other_cell.direction_of(self)
+    return false if other_cell_direction == nil
+    return false if self_direction_on_other_cell == nil
+    return false if cell_at(other_cell_direction) != nil
+    return false if other_cell.cell_at(self_direction_on_other_cell) != nil
+
+    set_cell_at(other_cell_direction, other_cell)
+    other_cell.set_cell_at(self_direction_on_other_cell, self)
+    return true
   end
 
   def disconnect_from(other_cell)
@@ -29,11 +34,11 @@ class Cell
   end
 
   def set_cell_at(direction,cell)
-    instance_variable_set "@#{direction}", cell
+    instance_variable_set "@#{direction}", cell if direction
   end
 
   def cell_at(direction)
-    method(direction).call
+    method(direction).call if direction
   end
 
   def direction_of(other_cell)
@@ -97,6 +102,10 @@ class Cell
         return nil
       end
     end
+  end
+
+  def to_s
+    "#{point.x} - #{point.y}"
   end
 
   def to_json(options = {})
