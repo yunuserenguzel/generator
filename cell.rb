@@ -22,15 +22,14 @@ class Cell
     return false if self_direction_on_other_cell == nil
     return false if cell_at(other_cell_direction) != nil
     return false if other_cell.cell_at(self_direction_on_other_cell) != nil
-
     set_cell_at(other_cell_direction, other_cell)
     other_cell.set_cell_at(self_direction_on_other_cell, self)
     return true
   end
 
   def disconnect_from(other_cell)
-    set_cell_at(direction_of(other_cell),nil)
-    other_cell.set_cell_at(other_cell.direction_of(self),nil)
+    set_cell_at(direction_of(other_cell), nil)
+    other_cell.set_cell_at(other_cell.direction_of(self), nil)
   end
 
   def set_cell_at(direction,cell)

@@ -93,8 +93,9 @@ class Map
   def has_solution?(cell = nil)
     # find an active cell to start
     if cell == nil
-      cells.each do |row|
-        row.each do |cell|
+      cells.shuffle.each do |row|
+        row.shuffle.each do |cell|
+          @first_cell = cell.to_s
           return has_solution?(cell) if cell.cell_type == CellType.active
         end
       end
@@ -105,10 +106,10 @@ class Map
     #   if connects move to that direction and call solve map with that cell
     #   if solve returns false disconnect connection and try another connection
     #   if cannot move any direction return false
-    Direction.all.each do |direction|
+    [Direction.south, Direction.north, Direction.east, Direction.west].shuffle.each do |direction|
       other_cell = cell_next_to cell, direction
       if cell.connect_to(other_cell)
-        puts "#{direction}: #{other_cell}\n#{self}"
+        puts "#{@first_cell} #{direction}: #{other_cell} \n#{self}"
         if other_cell.can_connect?
           if has_solution? other_cell
             return true
@@ -124,7 +125,6 @@ class Map
         end
       end
     end
-    puts cell
     return false
   end
 
@@ -214,7 +214,7 @@ class Map
         result += "#{cell}"
       end
     end
-    sleep 0.2
+    sleep 0.1
     return result
   end
 
